@@ -1,0 +1,257 @@
+:root {
+  --titlebar-height:      32px;
+  --titlebar-bg:          #0d1317;
+  --titlebar-btn-hover:   rgba(125, 211, 199, 0.2);
+  --titlebar-close-hover: rgba(192, 253, 251, 0.15);
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --titlebar-bg:          #daffef;
+    --titlebar-btn-hover:   rgba(47, 111, 104, 0.14);
+    --titlebar-close-hover: rgba(47, 111, 104, 0.22);
+  }
+}
+
+.titlebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--titlebar-height);
+  background-color: var(--color-bg);
+  border-bottom: 1px solid var(--color-border-subtle);
+  padding: 0 0.5rem 0 0.25rem;
+  flex-shrink: 0;
+  -webkit-app-region: drag;
+  gap: 0.5rem;
+}
+
+.titlebar__logo {
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  flex-shrink: 0;
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+}
+
+.titlebar__logo:hover {
+  color: var(--color-text-primary);
+  background-color: var(--titlebar-btn-hover);
+}
+
+.titlebar__logo svg {
+  display: block;
+  width: 1.125rem;
+  height: 1.25rem;
+}
+
+.titlebar__logo-icon {
+  display: grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.titlebar__menubar {
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
+  -webkit-app-region: no-drag;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.titlebar__menu {
+  display: flex;
+  align-items: center;
+}
+
+.titlebar__menu-btn {
+  height: 1.375rem;
+  padding: 0 0.5rem;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  transition: background-color 0.12s ease, color 0.12s ease;
+  white-space: nowrap;
+}
+
+.titlebar__menu-btn:hover,
+.titlebar__menu--open .titlebar__menu-btn {
+  background-color: var(--titlebar-btn-hover);
+  color: var(--color-text-primary);
+}
+
+.titlebar__backdrop {
+  position: fixed;
+  inset: 0;
+  top: var(--titlebar-height);
+  z-index: 90;
+  background-color: rgba(0, 0, 0, 0.35);
+  pointer-events: auto;
+}
+
+.titlebar__dropdown {
+  display: none;
+  position: fixed;
+  top: var(--titlebar-height);
+  min-width: 10rem;
+  background-color: var(--color-surface-raised);
+  border-top: none;
+  border-right: 1px solid var(--color-border-strong);
+  border-bottom: 1px solid var(--color-border-strong);
+  border-left: 1px solid var(--color-border-strong);
+  border-radius: 0 0 6px 6px;
+  padding: 0.25rem;
+  z-index: 1000;
+}
+
+.titlebar__menu--open .titlebar__dropdown {
+  display: flex;
+  flex-direction: column;
+}
+
+.titlebar__dropdown-item {
+  height: 1.75rem;
+  padding: 0 0.625rem;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  text-align: left;
+  transition: background-color 0.1s ease, color 0.1s ease;
+}
+
+.titlebar__dropdown-item:hover {
+  background-color: var(--titlebar-btn-hover);
+  color: var(--color-text-primary);
+}
+
+.titlebar__status {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin: 0 0.25rem;
+}
+
+.status--online   { background-color: var(--color-success); }
+.status--degraded { background-color: var(--color-warning); }
+.status--offline  { background-color: var(--color-error-strong); }
+
+.titlebar__icons {
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
+  -webkit-app-region: no-drag;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.titlebar__icon-btn {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.titlebar__button-icon,
+.titlebar__control-icon {
+  display: grid;
+  place-items: center;
+}
+
+.titlebar__button-icon {
+  width: 1.375rem;
+  height: 1.375rem;
+}
+
+.titlebar__button-icon svg {
+  display: block;
+  width: 1.375rem;
+  height: 1.375rem;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.titlebar__icon-btn:hover {
+  background-color: var(--titlebar-btn-hover);
+  color: var(--color-text-primary);
+}
+
+.titlebar__menu-btn:active,
+.titlebar__icon-btn:active,
+.titlebar__btn:active,
+.titlebar__dropdown-item:active {
+  background-color: var(--color-surface-selected);
+}
+
+.titlebar__controls {
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
+  -webkit-app-region: no-drag;
+  flex-shrink: 0;
+}
+
+.titlebar__btn {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.titlebar__btn:hover {
+  background-color: var(--titlebar-btn-hover);
+  color: var(--color-text-primary);
+}
+
+.titlebar__btn--close:hover {
+  background-color: var(--titlebar-close-hover);
+  color: var(--color-text-primary);
+}
+
+.titlebar__control-icon svg {
+  display: block;
+  width: 1.125rem;
+  height: 1.125rem;
+  pointer-events: none;
+}
+
+.titlebar__control-icon {
+  width: 1.375rem;
+  height: 1.375rem;
+}
+
+.titlebar__icon-btn:focus-visible,
+.titlebar__btn:focus-visible,
+.titlebar__menu-btn:focus-visible,
+.titlebar__dropdown-item:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}

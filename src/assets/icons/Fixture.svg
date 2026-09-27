@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="400" viewBox="0 0 360 400" fill="none">
+  <title>Layered hexagon icon</title>
+  <desc>Three separate aqua, teal, and slate shapes with open, transparent curved gaps between them.</desc>
+  <defs>
+    <linearGradient id="aqua" x1="51" y1="63" x2="281" y2="183" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#BDF9F6"/>
+      <stop offset=".5" stop-color="#9AE4E1"/>
+      <stop offset="1" stop-color="#C0FAEB"/>
+    </linearGradient>
+    <linearGradient id="teal" x1="51" y1="155" x2="287" y2="276" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#9AE8DE"/>
+      <stop offset=".52" stop-color="#55B6AF"/>
+      <stop offset="1" stop-color="#99E4D4"/>
+    </linearGradient>
+    <linearGradient id="slate" x1="48" y1="238" x2="279" y2="363" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#6A919F"/>
+      <stop offset=".54" stop-color="#354F5D"/>
+      <stop offset="1" stop-color="#486B7A"/>
+    </linearGradient>
+    <clipPath id="hexagon">
+      <path d="M160 32C177 21 195 21 213 32L316 95C328 102 333 111 333 124V267C333 281 328 290 316 298L205 369C189 379 171 379 155 369L43 298C31 290 26 281 26 267V138C26 124 31 114 44 106Z"/>
+    </clipPath>
+    <path id="wave" d="M26 170C53 150 75 124 110 124C153 124 186 180 237 178C277 178 305 144 333 116"/>
+    <mask id="layerOpenings" maskUnits="userSpaceOnUse" x="0" y="0" width="360" height="400" style="mask-type:luminance">
+      <rect width="360" height="400" fill="white"/>
+      <use href="#wave" fill="none" stroke="black" stroke-width="10" stroke-linecap="square"/>
+      <use href="#wave" transform="translate(0 84)" fill="none" stroke="black" stroke-width="10" stroke-linecap="square"/>
+    </mask>
+  </defs>
+  <g clip-path="url(#hexagon)" mask="url(#layerOpenings)">
+    <path fill="url(#aqua)" d="M0 0H360V116H333C305 144 277 178 237 178C186 180 153 124 110 124C75 124 53 150 26 170H0Z"/>
+    <path fill="url(#teal)" d="M0 170H26C53 150 75 124 110 124C153 124 186 180 237 178C277 178 305 144 333 116H360V200H333C305 228 277 262 237 262C186 264 153 208 110 208C75 208 53 234 26 254H0Z"/>
+    <path fill="url(#slate)" d="M0 254H26C53 234 75 208 110 208C153 208 186 264 237 262C277 262 305 228 333 200H360V400H0Z"/>
+  </g>
+</svg>

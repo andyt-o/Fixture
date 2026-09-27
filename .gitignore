@@ -1,0 +1,8 @@
+/target/
+/.trash/
+**/*.rs.bk
+.env
+.idea/
+.vscode/
+*.swp
+AGENTS.md
