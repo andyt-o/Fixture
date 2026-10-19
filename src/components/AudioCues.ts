@@ -6,8 +6,6 @@ import { invoke } from "@tauri-apps/api/core";
 // ==============================================================================
 // Functions
 // ==============================================================================
-
-// Synthesizes a subtle, pleasant notification chime using the Web Audio API
 export async function playNotificationChime(): Promise<void> {
   const settings = await invoke<{ soundEnabled: boolean }>("get_app_settings").catch(() => ({ soundEnabled: true }));
   if (!settings.soundEnabled) return;
@@ -37,10 +35,9 @@ export async function playNotificationChime(): Promise<void> {
       osc.stop(start + duration);
     };
 
-    // Harmonic two-tone chord (C5 -> E5)
     playTone(523.25, now, 0.28);
     playTone(659.25, now + 0.1, 0.35);
   } catch {
-    // AudioContext blocked or not supported
+    return;
   }
 }

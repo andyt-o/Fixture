@@ -2,34 +2,26 @@
 // Imports
 // ==============================================================================
 import { invoke } from "@tauri-apps/api/core";
+import { requireElement } from "../utils/Dom";
+import { CONNECTION_ROWS } from "../data/Connections";
+import { buildToggleRow } from "../ui/Toggle";
 import { APP_CATEGORIES, buildAppIconDropdown, loadDiscoveredApps, wireAppIconDropdowns, type AppCategory, type DiscoveredApps } from "./AppIconDropdown";
 import { buildProviderFields, wireProviderForms } from "./Onboarding";
 
-import closeIcon      from "../assets/icons/Close.svg?raw";
-import slackIcon      from "../assets/icons/Slack.svg?raw";
-import jiraIcon       from "../assets/icons/Jira.svg?raw";
-import discordIcon    from "../assets/icons/Discord.svg?raw";
-import teamsIcon      from "../assets/icons/MicrosoftTeams.svg?raw";
-import robotIcon      from "../assets/icons/Robot.svg?raw";
-import codeEditorIcon from "../assets/icons/CodeEditor.svg?raw";
-import webIcon        from "../assets/icons/Web.svg?raw";
-import emailIcon      from "../assets/icons/Email.svg?raw";
+import closeIcon from "../assets/icons/Close.svg?raw";
 
 import { playNotificationChime } from "./AudioCues";
 
 import "../styles/SettingsModal.css";
+import "../styles/Buttons.css";
+import "../styles/Labels.css";
+import "../styles/Icons.css";
+import "../styles/StatusDot.css";
 
 // ==============================================================================
 // Types
 // ==============================================================================
 type SettingsTab = "profile" | "connections" | "hotkeys" | "appearance" | "notifications";
-
-interface ConnectionRow {
-  kind:      string;
-  label:     string;
-  icon:      string;
-  connected: boolean;
-}
 
 type ConnectionMap = Record<string, boolean>;
 type HotkeyMap     = Record<string, string>;
@@ -76,17 +68,6 @@ interface ServiceNotificationConfig {
 // ==============================================================================
 // Constants
 // ==============================================================================
-const CONNECTION_ROWS: Omit<ConnectionRow, "connected">[] = [
-  { kind: "discord",    label: "Discord",     icon: discordIcon    },
-  { kind: "slack",      label: "Slack",       icon: slackIcon      },
-  { kind: "teams",      label: "Teams",       icon: teamsIcon      },
-  { kind: "jira",       label: "Jira",        icon: jiraIcon       },
-  { kind: "api-token",  label: "API / Agent", icon: robotIcon      },
-  { kind: "ide",        label: "Code Editor", icon: codeEditorIcon },
-  { kind: "browser",    label: "Browser",     icon: webIcon        },
-  { kind: "email",      label: "Email",       icon: emailIcon      },
-];
-
 const DEFAULT_HOTKEYS: HotkeyMap = {
   "Toggle overlay":      "Alt+F1",
   "Mute notifications":  "Alt+M",
@@ -112,8 +93,6 @@ const DEFAULT_SERVICE_NOTIFICATION_CONFIG: ServiceNotificationConfig = {
 // ==============================================================================
 // Functions
 // ==============================================================================
-
-// --- Module-level state ---
 let escListener: ((e: KeyboardEvent) => void) | null = null;
 let hotkeyCapture: { listener: (e: KeyboardEvent) => void; key: HTMLElement } | null = null;
 
@@ -125,23 +104,17 @@ function cancelHotkeyCapture(): void {
   hotkeyCapture = null;
 }
 
-function requireElement<T extends Element>(root: ParentNode, selector: string): T {
-  const element = root.querySelector<T>(selector);
-  if (!element) throw new Error(`Required settings modal element not found: ${selector}`);
-  return element;
-}
-
-function buildConnectionRow(row: Omit<ConnectionRow, "connected">, connected: boolean, discoveredApps: DiscoveredApps): string {
+function buildConnectionRow(row: { kind: string; label: string; icon: string }, connected: boolean, discoveredApps: DiscoveredApps): string {
   const statusClass = connected ? " settings-modal__conn-status--connected" : "";
   const statusText  = connected ? "Connected" : "Not connected";
   const actionClass = connected ? " settings-modal__conn-action--disconnect" : "";
   const actionText  = connected ? "Disconnect" : "Connect";
   const isAppRow = APP_CATEGORIES.includes(row.kind as AppCategory);
   const action = row.kind === "api-token"
-    ? `<button class="settings-modal__conn-action" type="button" aria-expanded="false" data-provider-toggle>Configure</button>`
+    ? `<button class="settings-modal__conn-action btn btn--ghost btn--md" type="button" aria-expanded="false" data-provider-toggle>Configure</button>`
     : isAppRow
     ? buildAppIconDropdown(row.kind as AppCategory, discoveredApps[row.kind as AppCategory], row.icon)
-    : `<button class="settings-modal__conn-action${actionClass}" data-kind="${row.kind}" data-connected="${connected}">${actionText}</button>`;
+    : `<button class="settings-modal__conn-action btn btn--ghost btn--md${actionClass}" data-kind="${row.kind}" data-connected="${connected}">${actionText}</button>`;
 
   const hasDetailedSettings = ["discord", "slack", "jira"].includes(row.kind);
   const detailedSettings = hasDetailedSettings ? buildServiceSettings(row.kind) : "";
@@ -154,7 +127,7 @@ function buildConnectionRow(row: Omit<ConnectionRow, "connected">, connected: bo
 
   return `
     <div class="settings-modal__conn-row" data-kind="${row.kind}">
-      <span class="settings-modal__conn-icon" aria-hidden="true">${row.icon}</span>
+      <span class="settings-modal__conn-icon icon-wrap icon-wrap--md" aria-hidden="true">${row.icon}</span>
       <span class="settings-modal__conn-label">${row.label}</span>
       <span class="settings-modal__conn-status${statusClass}">${statusText}</span>
       ${action}
@@ -175,7 +148,7 @@ function buildServiceSettings(kind: string): string {
     <section class="settings-modal__service-settings" data-service-settings="${kind}" aria-label="${kind} settings">
       <div class="settings-modal__service-controls">
         <label class="settings-modal__service-field">
-          <span class="settings-modal__service-field-label">${isJira ? "Issue polling" : "Notification polling"}</span>
+          <span class="settings-modal__service-field-label field-label">${isJira ? "Issue polling" : "Notification polling"}</span>
           <select class="settings-modal__jira-poll-select" data-service-poll="${kind}">${pollOptions}<option value="null">Manual only</option></select>
         </label>
         ${buildToggleRow(`${kind}-sound`, "Notification sound", "Play a sound for new activity", true)}
@@ -185,7 +158,7 @@ function buildServiceSettings(kind: string): string {
         <span class="settings-modal__service-section-label">Activity to show</span>
         ${activityControls}
       </div>
-      <button class="settings-modal__service-save" type="button" data-service-save="${kind}">Save ${kind} settings</button>
+      <button class="settings-modal__service-save btn btn--ghost btn--md" type="button" data-service-save="${kind}">Save ${kind} settings</button>
     </section>
   `;
 }
@@ -194,17 +167,17 @@ function buildProfilePanel(): string {
   return `
     <div class="settings-modal__panel-heading">Profile</div>
     <div class="settings-modal__field-group">
-      <label class="settings-modal__label" for="sm-display-name">Display name</label>
+      <label class="settings-modal__label field-label" for="sm-display-name">Display name</label>
       <input class="settings-modal__input" id="sm-display-name" type="text" placeholder="Your name" />
     </div>
     <div class="settings-modal__field-group">
-      <label class="settings-modal__label" for="sm-organisation">Organisation</label>
+      <label class="settings-modal__label field-label" for="sm-organisation">Organisation</label>
       <input class="settings-modal__input" id="sm-organisation" type="text" placeholder="Your organisation" />
     </div>
     <div class="settings-modal__avatar" id="sm-avatar" aria-label="Avatar">
       <span class="settings-modal__avatar-initials" id="sm-avatar-initials">?</span>
     </div>
-    <button class="settings-modal__save-btn" id="sm-profile-save">Save</button>
+    <button class="settings-modal__save-btn btn btn--primary btn--lg" id="sm-profile-save">Save</button>
   `;
 }
 
@@ -228,7 +201,7 @@ function buildHotkeysPanel(): string {
   return `
     <div class="settings-modal__panel-heading">Hotkeys</div>
     <div class="settings-modal__hotkey-list">${rows}</div>
-    <button class="settings-modal__save-btn" id="sm-hotkeys-save">Save</button>
+    <button class="settings-modal__save-btn btn btn--primary btn--lg" id="sm-hotkeys-save">Save</button>
   `;
 }
 
@@ -241,7 +214,7 @@ function buildAppearancePanel(): string {
   return `
     <div class="settings-modal__panel-heading">Appearance</div>
     <div class="settings-modal__field-group">
-      <span class="settings-modal__label">Theme</span>
+      <span class="settings-modal__label field-label">Theme</span>
       <div class="settings-modal__radio-group" id="sm-theme">
         <button class="settings-modal__radio-pill" data-value="system">System</button>
         <button class="settings-modal__radio-pill" data-value="dark">Dark</button>
@@ -249,11 +222,11 @@ function buildAppearancePanel(): string {
       </div>
     </div>
     <div class="settings-modal__field-group">
-      <label class="settings-modal__label" for="sm-opacity">Opacity <span id="sm-opacity-value">100</span>%</label>
+      <label class="settings-modal__label field-label" for="sm-opacity">Opacity <span id="sm-opacity-value">100</span>%</label>
       <input class="settings-modal__slider" id="sm-opacity" type="range" min="20" max="100" value="100" />
     </div>
     <div class="settings-modal__field-group">
-      <span class="settings-modal__label">Font size</span>
+      <span class="settings-modal__label field-label">Font size</span>
       <div class="settings-modal__radio-group" id="sm-font-size">
         <button class="settings-modal__radio-pill" data-value="small">Small</button>
         <button class="settings-modal__radio-pill settings-modal__radio-pill--active" data-value="default">Default</button>
@@ -261,7 +234,7 @@ function buildAppearancePanel(): string {
       </div>
     </div>
     <div class="settings-modal__field-group">
-      <span class="settings-modal__label">Accent colour</span>
+      <span class="settings-modal__label field-label">Accent colour</span>
       <div class="settings-modal__swatches">${swatches}</div>
       <input class="settings-modal__input settings-modal__input--hex" id="sm-accent-hex" type="text" placeholder="#64b6ac" maxlength="7" />
     </div>
@@ -270,23 +243,7 @@ function buildAppearancePanel(): string {
     ${buildToggleRow("sm-overlay-toolbar", "Always show toolbar", "Keep titlebar visible in overlay mode", false)}
     ${buildToggleRow("sm-overlay-autohide-idle", "Auto-hide when idle", "Dim or hide overlay when cursor is away", false)}
     ${buildToggleRow("sm-overlay-autohide-empty", "Auto-hide when empty", "Collapse overlay when no notifications are pending", false)}
-    <button class="settings-modal__save-btn" id="sm-appearance-save">Save</button>
-  `;
-}
-
-function buildToggleRow(id: string, label: string, sublabel: string, checked: boolean): string {
-  const checkedAttr = checked ? " checked" : "";
-  return `
-    <div class="settings-modal__toggle-row">
-      <div class="settings-modal__toggle-body">
-        <span class="settings-modal__toggle-label">${label}</span>
-        <span class="settings-modal__toggle-sublabel">${sublabel}</span>
-      </div>
-      <label class="settings-modal__toggle" aria-label="${label}">
-        <input type="checkbox" class="settings-modal__toggle-input" id="${id}"${checkedAttr} />
-        <span class="settings-modal__toggle-track"></span>
-      </label>
-    </div>
+    <button class="settings-modal__save-btn btn btn--primary btn--lg" id="sm-appearance-save">Save</button>
   `;
 }
 
@@ -304,7 +261,7 @@ function buildNotificationsPanel(): string {
     ${buildToggleRow("sm-notif-channel",  "Channel activity",  "New messages in watched channels",          false)}
     ${buildToggleRow("sm-notif-issues",   "Issue updates",     "Jira status changes and assignments",       true)}
     ${buildToggleRow("sm-notif-agent",    "Agent responses",   "Replies from connected AI / API agents",    true)}
-    <button class="settings-modal__save-btn" id="sm-notifications-save">Save</button>
+    <button class="settings-modal__save-btn btn btn--primary btn--lg" id="sm-notifications-save">Save</button>
   `;
 }
 
@@ -336,7 +293,7 @@ function buildModal(): string {
       <div class="settings-modal__backdrop"></div>
       <div class="settings-modal__shell">
         <nav class="settings-modal__nav">
-          <span class="settings-modal__nav-heading">Settings</span>
+          <span class="settings-modal__nav-heading section-label">Settings</span>
           ${tabButtons}
           <button class="settings-modal__close" aria-label="Close settings"><span class="settings-modal__close-icon" aria-hidden="true">${closeIcon}</span></button>
         </nav>
@@ -483,7 +440,6 @@ async function loadPanelData(modal: HTMLElement, tab: SettingsTab): Promise<void
     testSoundBtn?.addEventListener("click", () => {
       void playNotificationChime();
     });
-  }
   }
 
 }
@@ -634,7 +590,7 @@ function wireSaveButtons(modal: HTMLElement): void {
     const bindings: HotkeyMap = {};
     modal.querySelectorAll<HTMLElement>(".settings-modal__hotkey-row").forEach(row => {
       const action  = row.dataset["action"] ?? "";
-      const binding = requireElement<HTMLElement>(row, ".settings-modal__hotkey-key").dataset["binding"];
+      const binding = requireElement<HTMLElement>(row, ".settings-modal__hotkey-key").dataset["binding"] ?? "";
       bindings[action] = binding;
     });
     invoke("save_hotkeys", { bindings }).catch(() => {});
@@ -708,7 +664,6 @@ export function openSettingsModal(tab: SettingsTab = "profile"): void {
   const root = document.getElementById("modal-root");
   if (!root) return;
 
-  // If already open, just switch tabs
   const existing = root.querySelector<HTMLElement>(".settings-modal");
   if (existing) {
     switchTab(existing, tab);
@@ -718,10 +673,8 @@ export function openSettingsModal(tab: SettingsTab = "profile"): void {
   root.innerHTML = buildModal();
   const modal = requireElement<HTMLElement>(root, ".settings-modal");
 
-  // Activate the requested tab
   switchTab(modal, tab);
 
-  // Wire close paths
   const closeBtn = requireElement<HTMLButtonElement>(modal, ".settings-modal__close");
   const backdrop = requireElement<HTMLElement>(modal, ".settings-modal__backdrop");
 
@@ -731,14 +684,12 @@ export function openSettingsModal(tab: SettingsTab = "profile"): void {
   escListener = (e: KeyboardEvent) => { if (e.key === "Escape") closeSettingsModal(); };
   document.addEventListener("keydown", escListener);
 
-  // Wire tab buttons
   modal.querySelectorAll<HTMLButtonElement>(".settings-modal__tab").forEach(btn => {
     btn.addEventListener("click", () => {
       switchTab(modal, btn.dataset["tab"] as SettingsTab);
     });
   });
 
-  // Wire interactive panel controls
   wireHotkeyEditing(modal);
   wireAppearanceControls(modal);
   wireSaveButtons(modal);

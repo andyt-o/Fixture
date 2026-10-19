@@ -46,17 +46,6 @@
   pointer-events: none;
 }
 
-.overlay-hud__logo {
-  display: grid;
-  place-items: center;
-  width: 1rem;
-  height: 1rem;
-}
-
-.overlay-hud__logo svg {
-  width: var(--icon-size);
-  height: var(--icon-size);
-}
 
 .overlay-hud__title {
   font-size: 0.75rem;
@@ -132,7 +121,7 @@
   padding: 0.625rem 0.75rem;
   background-color: var(--color-surface);
   border: 1px solid var(--color-border-subtle);
-  border-radius: 6px;
+  border-radius: 8px;
 }
 
 .overlay-hud__card-row {
@@ -227,24 +216,6 @@
   pointer-events: none;
 }
 
-.overlay-pill__dot {
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 50%;
-  background-color: var(--color-success);
-}
-
-.overlay-pill__icon {
-  display: grid;
-  place-items: center;
-  width: var(--icon-size);
-  height: var(--icon-size);
-}
-
-.overlay-pill__icon svg {
-  width: var(--icon-size);
-  height: var(--icon-size);
-}
 
 .overlay-pill__count {
   font-size: 0.75rem;

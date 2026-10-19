@@ -4,10 +4,11 @@
 import { listen }           from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke }           from "@tauri-apps/api/core";
+import { requireElement }   from "../utils/Dom";
 
 import { openSettingsModal } from "./SettingsModal";
-import { mountOnboarding } from "./Onboarding";
-import { mountOverlay }    from "./OverlayController";
+import { mountOnboarding }   from "./Onboarding";
+import { mountOverlay }      from "./OverlayController";
 
 import minimizeIcon   from "../assets/icons/Minimize.svg?raw";
 import maximizeIcon   from "../assets/icons/Maximize.svg?raw";
@@ -20,6 +21,7 @@ import powerIcon      from "../assets/icons/Power.svg?raw";
 import settingsIcon   from "../assets/icons/Settings.svg?raw";
 
 import "../styles/Titlebar.css";
+import "../styles/StatusDot.css";
 
 // ==============================================================================
 // Types
@@ -89,12 +91,6 @@ function hideMenuBackdrop(): void {
   document.getElementById("menu-backdrop")?.remove();
 }
 
-function requireElement<T extends Element>(root: ParentNode, selector: string): T {
-  const element = root.querySelector<T>(selector);
-  if (!element) throw new Error(`Required titlebar element not found: ${selector}`);
-  return element;
-}
-
 function buildMenuBar(): string {
   const menus = MENUS.map(({ label, items }) => {
     const dropdownItems = items
@@ -116,7 +112,7 @@ function buildIconButtons(): string {
   return `
     <div class="titlebar__icons" aria-label="Quick actions">
       <button class="titlebar__icon-btn" id="tb-settings" aria-label="Open connections settings"><span class="titlebar__button-icon" aria-hidden="true">${settingsIcon}</span></button>
-      <span   class="titlebar__status status--offline" id="tb-status"  aria-label="Connection status"></span>
+      <span   class="titlebar__status status-dot status--offline" id="tb-status"  aria-label="Connection status"></span>
       <button class="titlebar__icon-btn" id="tb-mute"    aria-label="Mute notifications"><span class="titlebar__button-icon" aria-hidden="true">${soundOnIcon}</span></button>
       <button class="titlebar__icon-btn" id="tb-variant" aria-label="Active overlay variant"><span class="titlebar__button-icon" aria-hidden="true">${layoutIcon}</span></button>
       <button class="titlebar__icon-btn" id="tb-launch"  aria-label="Launch overlay"><span class="titlebar__button-icon" aria-hidden="true">${powerIcon}</span></button>
@@ -192,7 +188,7 @@ function wireStatusDot(): void {
   const dot = requireElement<HTMLElement>(document, "#tb-status");
 
   listen<ConnectionStatus>("connection-status", ({ payload }) => {
-    dot.className = `titlebar__status status--${payload}`;
+    dot.className = `titlebar__status status-dot status-dot--${payload}`;
   });
 }
 

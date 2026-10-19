@@ -2,30 +2,24 @@
 // Imports
 // ==============================================================================
 import { invoke } from "@tauri-apps/api/core";
+import { requireElement, escapeHtml } from "../utils/Dom";
+import { formatTimestamp } from "../utils/Format";
+import { CONNECTION_ROWS } from "../data/Connections";
 
-import slackIcon      from "../assets/icons/Slack.svg?raw";
-import jiraIcon       from "../assets/icons/Jira.svg?raw";
-import robotIcon      from "../assets/icons/Robot.svg?raw";
-import codeEditorIcon from "../assets/icons/CodeEditor.svg?raw";
-import webIcon        from "../assets/icons/Web.svg?raw";
-import emailIcon      from "../assets/icons/Email.svg?raw";
-import discordIcon    from "../assets/icons/Discord.svg?raw";
-import teamsIcon      from "../assets/icons/MicrosoftTeams.svg?raw";
+import robotIcon from "../assets/icons/Robot.svg?raw";
 
 import { openSettingsModal } from "./SettingsModal";
 import { mountOverlay }      from "./OverlayController";
 import "../styles/Dashboard.css";
+import "../styles/Buttons.css";
+import "../styles/Labels.css";
+import "../styles/Icons.css";
+import "../styles/StatusDot.css";
 
-// ================================================================================
+// ==============================================================================
 // Types
-// ================================================================================
+// ==============================================================================
 type DashboardCol = "activity" | "connections" | "issues" | "agent";
-
-interface ConnectionEntry {
-  kind: string;
-  label: string;
-  icon: string;
-}
 
 type ConnectionMap = Record<string, boolean>;
 
@@ -51,20 +45,9 @@ interface AgentItem {
   timestamp: number;
 }
 
-// ================================================================================
+// ==============================================================================
 // Constants
 // ==============================================================================
-const CONNECTION_ROWS: ConnectionEntry[] = [
-  { kind: "discord", label: "Discord", icon: discordIcon },
-  { kind: "slack", label: "Slack", icon: slackIcon },
-  { kind: "teams", label: "Teams", icon: teamsIcon },
-  { kind: "jira", label: "Jira", icon: jiraIcon },
-  { kind: "api-token", label: "API / Agent", icon: robotIcon },
-  { kind: "ide", label: "Code Editor", icon: codeEditorIcon },
-  { kind: "browser", label: "Browser", icon: webIcon },
-  { kind: "email", label: "Email", icon: emailIcon },
-];
-
 const DASHBOARD_COLS: { col: DashboardCol; label: string }[] = [
   { col: "activity", label: "Activity" },
   { col: "connections", label: "Connections" },
@@ -72,44 +55,19 @@ const DASHBOARD_COLS: { col: DashboardCol; label: string }[] = [
   { col: "agent", label: "Agent" },
 ];
 
-// ================================================================================
+// ==============================================================================
 // Functions
 // ==============================================================================
-function escapeHtml(value: string): string {
-  const replacements: Record<string, string> = {
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    "\"": "&quot;",
-    "'": "&#39;",
-  };
-  return value.replace(/[&<>"']/g, char => replacements[char] ?? char);
-}
-
-function requireElement<T extends Element>(root: ParentNode, selector: string): T {
-  const element = root.querySelector<T>(selector);
-  if (!element) throw new Error(`Required dashboard element not found: ${selector}`);
-  return element;
-}
-
-function formatTimestamp(timestamp: number): string {
-  const elapsedSeconds = Math.max(0, Math.floor((Date.now() - timestamp) / 1000));
-  if (elapsedSeconds < 60) return "Just now";
-  if (elapsedSeconds < 3600) return `${Math.floor(elapsedSeconds / 60)}m ago`;
-  if (elapsedSeconds < 86400) return `${Math.floor(elapsedSeconds / 3600)}h ago`;
-  return `${Math.floor(elapsedSeconds / 86400)}d ago`;
-}
-
 function buildRail(): string {
   return `
     <aside class="dashboard__rail">
-      <button class="dashboard__start" id="db-start" aria-label="Start Fixture overlay">Start</button>
+      <button class="dashboard__start btn btn--primary btn--lg" id="db-start" aria-label="Start Fixture overlay">Start</button>
       <div class="dashboard__rail-section">
-        <span class="dashboard__rail-heading">Connections</span>
+        <span class="dashboard__rail-heading section-label">Connections</span>
         <div class="dashboard__rail-connections" id="db-rail-connections"></div>
       </div>
       <div class="dashboard__rail-section">
-        <span class="dashboard__rail-heading">Overlay</span>
+        <span class="dashboard__rail-heading section-label">Overlay</span>
         <span class="dashboard__rail-layout" id="db-rail-layout">—</span>
       </div>
       <div class="dashboard__rail-footer">
@@ -146,24 +104,24 @@ function buildAgentCol(): string {
   return `<section class="dashboard__col" data-col="agent" aria-label="Agent"><h2 class="dashboard__col-heading">Agent</h2><div class="dashboard__items" id="db-agent-items"><p class="dashboard__empty">No agent activity.</p></div></section>`;
 }
 
-function buildRailConnection(entry: ConnectionEntry, connected: boolean): string {
+function buildRailConnection(entry: { kind: string; label: string; icon: string }, connected: boolean): string {
   const kind = escapeHtml(entry.kind);
   return `
     <button class="dashboard__rail-conn" data-kind="${kind}" aria-label="Open ${escapeHtml(entry.label)} connection settings">
-      <span class="dashboard__rail-conn-icon" aria-hidden="true">${entry.icon}</span>
+      <span class="dashboard__rail-conn-icon icon-wrap" aria-hidden="true">${entry.icon}</span>
       <span class="dashboard__rail-conn-label">${escapeHtml(entry.label)}</span>
-      <span class="dashboard__rail-conn-dot${connected ? " dashboard__rail-conn-dot--connected" : ""}" aria-label="${connected ? "Connected" : "Not connected"}"></span>
+      <span class="dashboard__rail-conn-dot status-dot${connected ? " status-dot--connected" : ""}" aria-label="${connected ? "Connected" : "Not connected"}"></span>
     </button>
   `;
 }
 
-function buildConnectionItem(entry: ConnectionEntry, connected: boolean): string {
+function buildConnectionItem(entry: { kind: string; label: string; icon: string }, connected: boolean): string {
   return `
     <div class="dashboard__connection" data-kind="${escapeHtml(entry.kind)}">
-      <span class="dashboard__connection-icon" aria-hidden="true">${entry.icon}</span>
+      <span class="dashboard__connection-icon icon-wrap icon-wrap--md" aria-hidden="true">${entry.icon}</span>
       <span class="dashboard__connection-name">${escapeHtml(entry.label)}</span>
       <span class="dashboard__connection-status${connected ? " dashboard__connection-status--connected" : ""}">${connected ? "Connected" : "Not connected"}</span>
-      <button class="dashboard__connection-action" data-kind="${escapeHtml(entry.kind)}">${connected ? "Disconnect" : "Connect"}</button>
+      <button class="dashboard__connection-action btn btn--ghost btn--sm" data-kind="${escapeHtml(entry.kind)}">${connected ? "Disconnect" : "Connect"}</button>
     </div>
   `;
 }
@@ -172,7 +130,7 @@ function buildActivityItem(item: FeedItem): string {
   const icon = CONNECTION_ROWS.find(entry => entry.kind === item.serviceKind)?.icon ?? "";
   return `
     <article class="dashboard__activity-item">
-      <span class="dashboard__item-icon" aria-hidden="true">${icon}</span>
+      <span class="dashboard__item-icon icon-wrap icon-wrap--md" aria-hidden="true">${icon}</span>
       <div class="dashboard__activity-copy">
         <div class="dashboard__activity-title"><strong>${escapeHtml(item.actor)}</strong><span>${escapeHtml(item.description)}</span></div>
         <time class="dashboard__item-time">${escapeHtml(formatTimestamp(item.timestamp))}</time>
@@ -194,7 +152,7 @@ function buildIssueItem(item: IssueItem): string {
 function buildAgentItem(item: AgentItem): string {
   return `
     <article class="dashboard__agent-item">
-      <div class="dashboard__agent-title"><span class="dashboard__item-icon" aria-hidden="true">${robotIcon}</span><strong>${escapeHtml(item.agentName)}</strong><time class="dashboard__item-time">${escapeHtml(formatTimestamp(item.timestamp))}</time></div>
+      <div class="dashboard__agent-title"><span class="dashboard__item-icon icon-wrap icon-wrap--md" aria-hidden="true">${robotIcon}</span><strong>${escapeHtml(item.agentName)}</strong><time class="dashboard__item-time">${escapeHtml(formatTimestamp(item.timestamp))}</time></div>
       <p class="dashboard__agent-preview">${escapeHtml(item.preview)}</p>
     </article>
   `;
@@ -260,7 +218,7 @@ function updateActiveTab(container: HTMLElement): void {
   });
 }
 
-// ================================================================================
+// ==============================================================================
 // Mount
 // ==============================================================================
 export function mountDashboard(container: HTMLElement): void {

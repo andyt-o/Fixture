@@ -1,0 +1,68 @@
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: background-color 0.12s ease, border-color 0.12s ease, color 0.12s ease, transform 0.12s ease;
+}
+
+.btn--primary {
+  color: var(--color-on-accent);
+  background-color: var(--color-accent-strong);
+  border-color: var(--color-accent-strong);
+}
+
+.btn--primary:hover {
+  background-color: var(--color-accent-hover);
+  border-color: var(--color-accent-hover);
+  color: #0d1317;
+  transform: translateY(-1px);
+}
+
+.btn--primary:active {
+  background-color: var(--color-accent-strong);
+  transform: translateY(0);
+}
+
+.btn--ghost {
+  color: var(--color-accent-strong);
+  background: color-mix(in srgb, var(--color-accent) 9%, transparent);
+  border-color: var(--color-accent-strong);
+}
+
+.btn--ghost:hover {
+  color: var(--color-on-accent);
+  background: var(--color-accent-strong);
+  border-color: var(--color-accent-strong);
+}
+
+.btn--ghost--danger:hover {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+  background: color-mix(in srgb, var(--color-danger) 10%, transparent);
+}
+
+.btn--sm {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.625rem;
+}
+
+.btn--md {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+}
+
+.btn--lg {
+  min-height: 2.5rem;
+  padding: 0.5rem 1.125rem;
+  font-size: 0.875rem;
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}

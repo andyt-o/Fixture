@@ -1,0 +1,25 @@
+.icon-wrap {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: var(--icon-size);
+  height: var(--icon-size);
+}
+
+.icon-wrap svg {
+  display: block;
+  width: var(--icon-size);
+  height: var(--icon-size);
+  color: var(--color-text-secondary);
+  pointer-events: none;
+}
+
+.icon-wrap--md {
+  width: calc(var(--icon-size) + 0.25rem);
+  height: calc(var(--icon-size) + 0.25rem);
+}
+
+.icon-wrap--md svg {
+  width: var(--icon-size);
+  height: var(--icon-size);
+}

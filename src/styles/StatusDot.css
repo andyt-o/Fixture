@@ -1,0 +1,14 @@
+.status-dot {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background-color: var(--color-text-disabled);
+}
+
+.status-dot--online   { background-color: var(--color-success); }
+.status-dot--degraded { background-color: var(--color-warning); }
+.status-dot--offline  { background-color: var(--color-error-strong); }
+.status-dot--active   { background-color: var(--color-success); }
+.status-dot--connected { background-color: var(--color-success); }

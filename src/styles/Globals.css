@@ -8,9 +8,19 @@
   -webkit-user-drag: none;
 }
 
+html {
+  text-rendering: optimizeLegibility;
+}
+
+svg {
+  shape-rendering: geometricPrecision;
+}
+
 :root {
   font-size: clamp(13px, 0.833vw, 24px);
   --icon-size: clamp(1.25rem, 1.35vw, 1.75rem);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 
   --color-bg:           #0d1317;
   --color-surface:      #1b242a;
@@ -44,6 +54,8 @@
 
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]):not([data-theme="light"]) {
+    -webkit-font-smoothing: auto;
+    -moz-osx-font-smoothing: auto;
     --color-bg:           #fcfffd;
     --color-surface:      #daffef;
     --color-border:       #64b6ac;
@@ -108,10 +120,14 @@
 
 :root[data-theme="dark"] {
   color-scheme: dark;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 :root[data-theme="light"] {
   color-scheme: light;
+  -webkit-font-smoothing: auto;
+  -moz-osx-font-smoothing: auto;
 }
 
 html,
@@ -126,6 +142,7 @@ body {
 
 svg {
   filter: brightness(0.82);
+  shape-rendering: geometricPrecision;
 }
 
 #app {

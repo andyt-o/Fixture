@@ -1,9 +1,11 @@
-// ================================================================================
+// ==============================================================================
 // Imports
 // ==============================================================================
 import { invoke } from "@tauri-apps/api/core";
+import { requireElement, requireClosest, escapeHtml } from "../utils/Dom";
+import "../styles/IconDropdown.css";
 
-// ================================================================================
+// ==============================================================================
 // Types
 // ==============================================================================
 export type AppCategory = "ide" | "browser" | "email";
@@ -17,37 +19,15 @@ export interface DiscoveredApp {
 
 export type DiscoveredApps = Record<AppCategory, DiscoveredApp[]>;
 
-// ================================================================================
+// ==============================================================================
 // Constants
 // ==============================================================================
 export const APP_CATEGORIES: AppCategory[] = ["ide", "browser", "email"];
 const FILE_CHOOSER_LABEL = "Choose from File Explorer";
 
-// ================================================================================
+// ==============================================================================
 // Functions
 // ==============================================================================
-function escapeAttribute(value: string): string {
-  const replacements: Record<string, string> = {
-    "&": "&amp;",
-    "\"": "&quot;",
-    "<": "&lt;",
-    ">": "&gt;",
-    "'": "&#39;",
-  };
-  return value.replace(/[&"<>']/g, char => replacements[char]);
-}
-
-function requireElement<T extends Element>(root: ParentNode, selector: string): T {
-  const element = root.querySelector<T>(selector);
-  if (!element) throw new Error(`Required app dropdown element not found: ${selector}`);
-  return element;
-}
-
-function requireClosest<T extends Element>(element: Element, selector: string): T {
-  const match = element.closest<T>(selector);
-  if (!match) throw new Error(`Required app dropdown element not found: ${selector}`);
-  return match;
-}
 
 export async function loadDiscoveredApps(): Promise<DiscoveredApps> {
   const entries = await Promise.all(APP_CATEGORIES.map(async category => {
@@ -60,17 +40,17 @@ export async function loadDiscoveredApps(): Promise<DiscoveredApps> {
 export function buildAppIconDropdown(category: AppCategory, apps: DiscoveredApp[], fallbackIcon: string): string {
   const selectedApp = apps.find(app => app.isDefault) ?? apps[0];
   const selectedImage = selectedApp?.iconDataUri
-    ? `<img class="icon-dropdown__current-icon" src="${escapeAttribute(selectedApp.iconDataUri)}" alt="${escapeAttribute(selectedApp.name)}" />`
+    ? `<img class="icon-dropdown__current-icon" src="${escapeHtml(selectedApp.iconDataUri)}" alt="${escapeHtml(selectedApp.name)}" />`
     : `<span class="icon-dropdown__fallback-icon">${fallbackIcon}</span>`;
   const options = apps.map(app => {
     const selectedClass = app.id === selectedApp?.id ? " icon-dropdown__item--selected" : "";
     const appIcon = app.iconDataUri
-      ? `<img class="icon-dropdown__item-icon" src="${escapeAttribute(app.iconDataUri)}" alt="" />`
+      ? `<img class="icon-dropdown__item-icon" src="${escapeHtml(app.iconDataUri)}" alt="" />`
       : `<span class="icon-dropdown__fallback-icon">${fallbackIcon}</span>`;
-    return `<button class="icon-dropdown__item${selectedClass}" data-app-id="${escapeAttribute(app.id)}" role="option" aria-label="${escapeAttribute(app.name)}" title="${escapeAttribute(app.name)}" aria-selected="${app.id === selectedApp?.id}">${appIcon}<span class="icon-dropdown__item-label">${escapeAttribute(app.name)}</span></button>`;
+    return `<button class="icon-dropdown__item${selectedClass}" data-app-id="${escapeHtml(app.id)}" role="option" aria-label="${escapeHtml(app.name)}" title="${escapeHtml(app.name)}" aria-selected="${app.id === selectedApp?.id}">${appIcon}<span class="icon-dropdown__item-label">${escapeHtml(app.name)}</span></button>`;
   }).join("");
 
-  return `<div class="icon-dropdown" data-category="${category}" data-selected-app="${escapeAttribute(selectedApp?.id ?? "")}"><button class="icon-dropdown__trigger" aria-haspopup="listbox" aria-expanded="false" title="${selectedApp ? `Selected: ${escapeAttribute(selectedApp.name)}` : `Choose ${category} app`}" aria-label="${selectedApp ? `Selected: ${escapeAttribute(selectedApp.name)}` : `Choose ${category} app`}">${selectedImage}<span class="icon-dropdown__caret">⌄</span></button><div class="icon-dropdown__menu" role="listbox" aria-hidden="true">${options}<button class="icon-dropdown__browse" type="button" role="option" aria-selected="false"><span class="icon-dropdown__browse-icon" aria-hidden="true">📁</span><span class="icon-dropdown__browse-label">${FILE_CHOOSER_LABEL}</span></button><span class="icon-dropdown__fallback-template" hidden>${fallbackIcon}</span></div></div>`;
+  return `<div class="icon-dropdown" data-category="${category}" data-selected-app="${escapeHtml(selectedApp?.id ?? "")}"><button class="icon-dropdown__trigger" aria-haspopup="listbox" aria-expanded="false" title="${selectedApp ? `Selected: ${escapeHtml(selectedApp.name)}` : `Choose ${category} app`}" aria-label="${selectedApp ? `Selected: ${escapeHtml(selectedApp.name)}` : `Choose ${category} app`}">${selectedImage}<span class="icon-dropdown__caret">⌄</span></button><div class="icon-dropdown__menu" role="listbox" aria-hidden="true">${options}<button class="icon-dropdown__browse" type="button" role="option" aria-selected="false"><span class="icon-dropdown__browse-icon" aria-hidden="true">📁</span><span class="icon-dropdown__browse-label">${FILE_CHOOSER_LABEL}</span></button><span class="icon-dropdown__fallback-template" hidden>${fallbackIcon}</span></div></div>`;
 }
 
 export function wireAppIconDropdowns(root: HTMLElement): void {

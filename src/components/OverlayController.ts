@@ -1,17 +1,20 @@
 // ==============================================================================
 // Imports
 // ==============================================================================
-import { invoke } from "@tauri-apps/api/core";
+import { invoke }          from "@tauri-apps/api/core";
+import { formatTimestamp } from "../utils/Format";
 
-import fixtureIcon from "../assets/icons/Fixture.svg?raw";
-import layoutIcon  from "../assets/icons/Layout.svg?raw";
+import fixtureIcon  from "../assets/icons/Fixture.svg?raw";
+import layoutIcon   from "../assets/icons/Layout.svg?raw";
 import maximizeIcon from "../assets/icons/Maximize.svg?raw";
-import closeIcon   from "../assets/icons/Close.svg?raw";
-import caretIcon   from "../assets/icons/Caret.svg?raw";
+import closeIcon    from "../assets/icons/Close.svg?raw";
+import caretIcon    from "../assets/icons/Caret.svg?raw";
 
 import { mountDashboard } from "./Dashboard";
 import { mountTitlebar }  from "./Titlebar";
 import "../styles/Overlay.css";
+import "../styles/Icons.css";
+import "../styles/StatusDot.css";
 
 // ==============================================================================
 // Types
@@ -38,18 +41,11 @@ function buildFeedCards(items: FeedItem[]): string {
     <div class="overlay-hud__card">
       <div class="overlay-hud__card-row">
         <span class="overlay-hud__card-actor">${item.actor}</span>
-        <span class="overlay-hud__card-time">${formatRelativeTime(item.timestamp)}</span>
+        <span class="overlay-hud__card-time">${formatTimestamp(item.timestamp)}</span>
       </div>
       <span class="overlay-hud__card-desc">${item.description}</span>
     </div>
   `).join("");
-}
-
-function formatRelativeTime(timestamp: number): string {
-  const diffSec = Math.floor((Date.now() - timestamp) / 1000);
-  if (diffSec < 60) return "just now";
-  if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`;
-  return `${Math.floor(diffSec / 3600)}h ago`;
 }
 
 function buildHudView(items: FeedItem[]): string {
@@ -57,7 +53,7 @@ function buildHudView(items: FeedItem[]): string {
     <div class="overlay-hud">
       <header class="overlay-hud__header">
         <div class="overlay-hud__drag-handle">
-          <span class="overlay-hud__logo">${fixtureIcon}</span>
+          <span class="overlay-hud__logo icon-wrap">${fixtureIcon}</span>
           <span class="overlay-hud__title">Fixture</span>
           <span class="overlay-hud__badge">HUD</span>
         </div>
@@ -87,8 +83,8 @@ function buildPillView(count: number): string {
   return `
     <div class="overlay-pill">
       <div class="overlay-pill__lead">
-        <span class="overlay-pill__dot"></span>
-        <span class="overlay-pill__icon">${fixtureIcon}</span>
+        <span class="overlay-pill__dot status-dot status-dot--active"></span>
+        <span class="overlay-pill__icon icon-wrap">${fixtureIcon}</span>
         <span class="overlay-pill__count">${count}</span>
       </div>
       <div class="overlay-pill__actions">
@@ -172,7 +168,6 @@ function setupProximityAutoHide(cardElement: HTMLElement, autoHideWhenIdle: bool
   resetIdle();
 }
 
-// Restores application window from overlay mode back to full desktop Dashboard
 export async function restoreToDesktop(container: HTMLElement): Promise<void> {
   if (idleTimer) window.clearTimeout(idleTimer);
   await invoke("stop_overlay").catch(() => {});
@@ -190,8 +185,6 @@ export async function restoreToDesktop(container: HTMLElement): Promise<void> {
 // ==============================================================================
 // Mount
 // ==============================================================================
-
-// Mounts the active overlay variant into the target container
 export async function mountOverlay(
   container: HTMLElement,
   variant: OverlayVariant = "floating-hud",
@@ -212,7 +205,6 @@ export async function mountOverlay(
 
   const items = await invoke<FeedItem[]>("get_activity_feed").catch(() => []);
 
-  // If auto-hide on empty is enabled and there are no notifications, fall back to compact mini-pill
   const activeVariant = (settings.autoHideWhenEmpty && items.length === 0) ? "mini-pill" : variant;
 
   if (activeVariant === "mini-pill") {

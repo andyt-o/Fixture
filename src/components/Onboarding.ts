@@ -1,31 +1,35 @@
-// ======================================================================
+// ==============================================================================
 // Imports
-// ======================================================================
+// ==============================================================================
 import { invoke } from "@tauri-apps/api/core";
+import { requireElement } from "../utils/Dom";
 import { mountDashboard } from "./Dashboard";
 import { openSettingsModal } from "./SettingsModal";
 import { APP_CATEGORIES, buildAppIconDropdown, loadDiscoveredApps, wireAppIconDropdowns, type AppCategory, type DiscoveredApps } from "./AppIconDropdown";
+import "../styles/Buttons.css";
+import "../styles/Labels.css";
+import "../styles/Icons.css";
 
-import chatIcon from "../assets/icons/Chat.svg?raw";
-import discordIcon from "../assets/icons/Discord.svg?raw";
-import slackIcon from "../assets/icons/Slack.svg?raw";
-import teamsIcon from "../assets/icons/MicrosoftTeams.svg?raw";
-import jiraIcon from "../assets/icons/Jira.svg?raw";
-import robotIcon from "../assets/icons/Robot.svg?raw";
-import ibmIcon from "../assets/icons/IBM.svg?raw";
-import openAiIcon from "../assets/icons/OpenAI.svg?raw";
+import chatIcon      from "../assets/icons/Chat.svg?raw";
+import discordIcon   from "../assets/icons/Discord.svg?raw";
+import slackIcon     from "../assets/icons/Slack.svg?raw";
+import teamsIcon     from "../assets/icons/MicrosoftTeams.svg?raw";
+import jiraIcon      from "../assets/icons/Jira.svg?raw";
+import robotIcon     from "../assets/icons/Robot.svg?raw";
+import ibmIcon       from "../assets/icons/IBM.svg?raw";
+import openAiIcon    from "../assets/icons/OpenAI.svg?raw";
 import codeEditorIcon from "../assets/icons/CodeEditor.svg?raw";
-import webIcon from "../assets/icons/Web.svg?raw";
-import emailIcon from "../assets/icons/Email.svg?raw";
-import fixtureIcon from "../assets/icons/Fixture.svg?raw";
-import settingsIcon from "../assets/icons/Settings.svg?raw";
+import webIcon       from "../assets/icons/Web.svg?raw";
+import emailIcon     from "../assets/icons/Email.svg?raw";
+import fixtureIcon   from "../assets/icons/Fixture.svg?raw";
+import settingsIcon  from "../assets/icons/Settings.svg?raw";
 import caretDownIcon from "../assets/icons/Caret.svg?raw";
 
 import "../styles/Onboarding.css";
 
-// ======================================================================
+// ==============================================================================
 // Types
-// ======================================================================
+// ==============================================================================
 const enum ConnectionKind {
   Chat = "chat",
   Discord = "discord",
@@ -56,9 +60,9 @@ interface GroupEntry {
   children: ConnectionEntry[];
 }
 
-// ======================================================================
+// ==============================================================================
 // Constants
-// ======================================================================
+// ==============================================================================
 const CHAT_GROUP: GroupEntry = {
   kind: ConnectionKind.Chat,
   label: "Chat",
@@ -105,24 +109,18 @@ const AI_PROVIDER_FIELDS = {
   ],
 };
 
-// ======================================================================
+// ==============================================================================
 // Functions
-// ======================================================================
-function requireElement<T extends Element>(root: ParentNode, selector: string): T {
-  const element = root.querySelector<T>(selector);
-  if (!element) throw new Error(`Required onboarding element not found: ${selector}`);
-  return element;
-}
-
+// ==============================================================================
 function buildCard(entry: ConnectionEntry, discoveredApps: DiscoveredApps): string {
   const optionalClass = entry.optional ? " onboarding__card--optional" : "";
   const badge = entry.optional ? `<span class="onboarding__card-badge">Optional</span>` : "";
   if (APP_CATEGORIES.includes(entry.kind as AppCategory)) {
     const category = entry.kind as AppCategory;
     const dropdown = buildAppIconDropdown(category, discoveredApps[category], entry.icon);
-    return `<div class="onboarding__card onboarding__card--app${optionalClass}" data-connection="${entry.kind}"><div class="onboarding__card-content"><div class="onboarding__card-row"><span class="onboarding__card-icon" aria-hidden="true">${entry.icon}</span><span class="onboarding__card-label">${entry.label}${badge}</span></div><span class="onboarding__card-desc">${entry.description}</span></div>${dropdown}</div>`;
+    return `<div class="onboarding__card onboarding__card--app${optionalClass}" data-connection="${entry.kind}"><div class="onboarding__card-content"><div class="onboarding__card-row"><span class="onboarding__card-icon icon-wrap" aria-hidden="true">${entry.icon}</span><span class="onboarding__card-label">${entry.label}${badge}</span></div><span class="onboarding__card-desc">${entry.description}</span></div>${dropdown}</div>`;
   }
-  return `<button class="onboarding__card${optionalClass}" data-connection="${entry.kind}" aria-label="Connect ${entry.label}"><div class="onboarding__card-row"><span class="onboarding__card-icon" aria-hidden="true">${entry.icon}</span><span class="onboarding__card-label">${entry.label}${badge}</span></div><span class="onboarding__card-desc">${entry.description}</span><span class="onboarding__card-action">Connect</span></button>`;
+  return `<button class="onboarding__card${optionalClass}" data-connection="${entry.kind}" aria-label="Connect ${entry.label}"><div class="onboarding__card-row"><span class="onboarding__card-icon icon-wrap" aria-hidden="true">${entry.icon}</span><span class="onboarding__card-label">${entry.label}${badge}</span></div><span class="onboarding__card-desc">${entry.description}</span><span class="onboarding__card-action btn btn--ghost btn--sm">Connect</span></button>`;
 }
 
 export function buildProviderFields(kind: string): string {
@@ -132,29 +130,29 @@ export function buildProviderFields(kind: string): string {
     return `<label class="onboarding__provider-field"><span>${field.label}</span><span class="onboarding__secret-field"><input type="${field.type}" data-secret-key="${field.key}" autocomplete="off" />${reveal}</span></label>`;
   }).join("");
   const priority = provider === "ibm" ? "watsonx" : "openai";
-  return `<form class="onboarding__provider-form" data-provider="${priority}">${fields}<label class="onboarding__priority-toggle"><input type="checkbox" data-priority="${priority}" /><span class="onboarding__toggle-track"></span><span>Set as Primary Engine</span></label><button class="onboarding__provider-save" type="submit">Save credentials</button><span class="onboarding__provider-status" aria-live="polite"></span></form>`;
+  return `<form class="onboarding__provider-form" data-provider="${priority}">${fields}<label class="toggle toggle--compact"><input type="checkbox" data-priority="${priority}" /><span class="toggle__track"></span><span>Set as Primary Engine</span></label><button class="onboarding__provider-save btn btn--ghost btn--sm" type="submit">Save credentials</button><span class="onboarding__provider-status" aria-live="polite"></span></form>`;
 }
 
 function buildSubCard(entry: ConnectionEntry, groupKind: ConnectionKind): string {
   const isProvider = groupKind === ConnectionKind.AiAgentGroup;
   const optionalClass = entry.optional ? " onboarding__sub-card--optional" : "";
-  const action = isProvider ? buildProviderFields(entry.kind) : `<span class="onboarding__card-action">Connect</span>`;
-  return `<div class="onboarding__sub-card${optionalClass}" data-connection="${entry.kind}"><button class="onboarding__sub-card-trigger" data-connection="${entry.kind}" aria-label="${isProvider ? "Configure" : "Connect"} ${entry.label}"><div class="onboarding__card-row"><span class="onboarding__card-icon" aria-hidden="true">${entry.icon}</span><span class="onboarding__card-label">${entry.label}</span></div><span class="onboarding__card-desc">${entry.description}</span>${isProvider ? "" : action}</button>${isProvider ? action : ""}</div>`;
+  const action = isProvider ? buildProviderFields(entry.kind) : `<span class="onboarding__card-action btn btn--ghost btn--sm">Connect</span>`;
+  return `<div class="onboarding__sub-card${optionalClass}" data-connection="${entry.kind}"><button class="onboarding__sub-card-trigger" data-connection="${entry.kind}" aria-label="${isProvider ? "Configure" : "Connect"} ${entry.label}"><div class="onboarding__card-row"><span class="onboarding__card-icon icon-wrap" aria-hidden="true">${entry.icon}</span><span class="onboarding__card-label">${entry.label}</span></div><span class="onboarding__card-desc">${entry.description}</span>${isProvider ? "" : action}</button>${isProvider ? action : ""}</div>`;
 }
 
 function buildGroupCard(group: GroupEntry): string {
   const children = group.children.map(entry => buildSubCard(entry, group.kind)).join("");
-  return `<div class="onboarding__group" data-group="${group.kind}"><button class="onboarding__group-header" aria-expanded="false" data-group="${group.kind}" aria-label="Expand ${group.label} connections"><div class="onboarding__card-row"><span class="onboarding__card-icon" aria-hidden="true">${group.icon}</span><span class="onboarding__card-label">${group.label}</span></div><span class="onboarding__group-caret" aria-hidden="true">${caretDownIcon}</span></button><div class="onboarding__group-children" aria-hidden="true">${children}</div></div>`;
+  return `<div class="onboarding__group" data-group="${group.kind}"><button class="onboarding__group-header" aria-expanded="false" data-group="${group.kind}" aria-label="Expand ${group.label} connections"><div class="onboarding__card-row"><span class="onboarding__card-icon icon-wrap" aria-hidden="true">${group.icon}</span><span class="onboarding__card-label">${group.label}</span></div><span class="onboarding__group-caret" aria-hidden="true">${caretDownIcon}</span></button><div class="onboarding__group-children" aria-hidden="true">${children}</div></div>`;
 }
 
 function buildInfoPanel(): string {
   const links = INFO_LINKS.map(({ label, target }) => `<button class="onboarding__info-link" data-target="${target}">${label}</button>`).join("");
-  return `<div class="onboarding__info"><div class="onboarding__info-hero"><span class="onboarding__logo" aria-hidden="true">${fixtureIcon}</span><h1 class="onboarding__heading">Welcome to Fixture</h1><p class="onboarding__sub">Fixture is a lightweight overlay that keeps your tools — Slack, Jira, your editor, and more — immediately accessible without leaving your flow. Connect what you need below to get started.</p></div><div class="onboarding__info-links"><span class="onboarding__info-links-label">Quick links</span>${links}</div></div>`;
+  return `<div class="onboarding__info"><div class="onboarding__info-hero"><span class="onboarding__logo" aria-hidden="true">${fixtureIcon}</span><h1 class="onboarding__heading">Welcome to Fixture</h1><p class="onboarding__sub">Fixture is a lightweight overlay that keeps your tools — Slack, Jira, your editor, and more — immediately accessible without leaving your flow. Connect what you need below to get started.</p></div><div class="onboarding__info-links"><span class="onboarding__info-links-label section-label">Quick links</span>${links}</div></div>`;
 }
 
 function buildView(discoveredApps: DiscoveredApps): string {
   const cards = CONNECTIONS.map(entry => buildCard(entry, discoveredApps)).join("");
-  return `<div class="onboarding"><div class="onboarding__list"><div class="onboarding__list-header"><span class="onboarding__list-heading">Connections</span><button class="onboarding__list-cog" aria-label="Open connections settings">${settingsIcon}</button></div><div class="onboarding__cards">${buildGroupCard(CHAT_GROUP)}${buildGroupCard(AI_AGENT_GROUP)}${cards}</div><button class="onboarding__dashboard-btn" aria-label="Go to Dashboard">Go to Dashboard</button></div>${buildInfoPanel()}</div>`;
+  return `<div class="onboarding"><div class="onboarding__list"><div class="onboarding__list-header"><span class="onboarding__list-heading section-label">Connections</span><button class="onboarding__list-cog" aria-label="Open connections settings">${settingsIcon}</button></div><div class="onboarding__cards">${buildGroupCard(CHAT_GROUP)}${buildGroupCard(AI_AGENT_GROUP)}${cards}</div><button class="onboarding__dashboard-btn btn btn--primary btn--md" aria-label="Go to Dashboard">Go to Dashboard</button></div>${buildInfoPanel()}</div>`;
 }
 
 function wireCards(container: HTMLElement): void {
@@ -241,9 +239,9 @@ function wireInfoLinks(container: HTMLElement): void {
   });
 }
 
-// ======================================================================
+// ==============================================================================
 // Mount
-// ======================================================================
+// ==============================================================================
 export async function mountOnboarding(container: HTMLElement, force = false): Promise<void> {
   const hasConnections = await invoke<boolean>("check_connections").catch(() => false);
   if (hasConnections && !force) {
