@@ -1,17 +1,14 @@
 // ==============================================================================
 // Imports
 // ==============================================================================
-import { invoke } from "@tauri-apps/api/core";
+import { loadSettings } from "../api/Settings";
 
 // ==============================================================================
 // Functions
 // ==============================================================================
 export async function playNotificationChime(): Promise<void> {
-  const settings = await invoke<{ soundEnabled: boolean }>("get_app_settings").catch(() => ({ soundEnabled: true }));
-  if (!settings.soundEnabled) return;
-
-  const notifs = await invoke<{ globalMute: boolean }>("get_notifications").catch(() => ({ globalMute: false }));
-  if (notifs.globalMute) return;
+  const settings = await loadSettings().catch(() => null);
+  if (settings && (!settings.overlay.soundEnabled || settings.notifications.globalMute)) return;
 
   try {
     const audioCtx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();

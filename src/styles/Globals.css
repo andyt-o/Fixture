@@ -6,14 +6,11 @@
   padding: 0;
   user-select: none;
   -webkit-user-drag: none;
+  -webkit-touch-callout: none;
 }
 
-html {
-  text-rendering: optimizeLegibility;
-}
-
-svg {
-  shape-rendering: geometricPrecision;
+img {
+  image-rendering: -webkit-optimize-contrast;
 }
 
 :root {
@@ -138,6 +135,8 @@ body {
   color: var(--color-text-primary);
   font-family: system-ui, -apple-system, sans-serif;
   overflow: hidden;
+  overscroll-behavior: none;
+  text-rendering: optimizeLegibility;
 }
 
 svg {

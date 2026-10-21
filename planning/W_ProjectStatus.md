@@ -75,33 +75,23 @@ Fixture is a Tauri v2 desktop overlay application (TypeScript frontend + Rust ba
 # 4. What Is Missing / Incomplete
 ================================================================================
 
-### 4A. Missing Rust Commands (Frontend Calls These — Not Yet in `Commands.rs`)
+### 4A. Rust Commands and Settings Migration
 
-The frontend invokes these commands in `Dashboard.ts` and `SettingsModal.ts`; they are absent from the Rust backend and will silently fail to empty/default values at runtime:
+Settings now use the unified `get_settings` / `save_settings` commands and persist as one JSON value. The old per-section settings commands have been removed from the frontend and Rust handler. `get_connection_states`, `disconnect_service`, `get_activity_feed`, `get_jira_issues`, `get_agent_activity`, `get_active_layout`, and `open_view_mode` are registered. Feed, issue, and agent commands currently return empty collections; `open_view_mode` currently validates the requested mode without changing the window.
+
+The following functionality still needs implementation beyond the IPC stubs:
 
 | Command | Called By | Purpose |
 |---|---|---|
-| `get_connection_states` | `Dashboard.ts`, `SettingsModal.ts` | Returns `Record<string, boolean>` of connected services |
-| `disconnect_service` | `Dashboard.ts`, `SettingsModal.ts` | Revokes tokens for a given connection kind |
-| `get_activity_feed` | `Dashboard.ts`, `OverlayController.ts` | Returns `FeedItem[]` from connected platforms |
-| `get_jira_issues` | `Dashboard.ts` | Returns `IssueItem[]` from Jira poller |
-| `get_agent_activity` | `Dashboard.ts` | Returns `AgentItem[]` from LLM agent history |
-| `get_active_layout` | `Dashboard.ts` | Returns current overlay variant label string |
-| `get_profile` | `SettingsModal.ts` | Returns `{ displayName, organisation }` |
-| `save_profile` | `SettingsModal.ts` | Persists profile data |
-| `get_hotkeys` | `SettingsModal.ts` | Returns `Record<string, string>` hotkey map |
-| `save_hotkeys` | `SettingsModal.ts` | Persists hotkey bindings |
-| `get_appearance` | `SettingsModal.ts` | Returns `AppearanceConfig` (theme, opacity, fontSize, accentColor) |
-| `save_appearance` | `SettingsModal.ts` | Persists appearance settings |
-| `get_notifications` | `SettingsModal.ts`, `AudioCues.ts` | Returns `NotificationConfig` |
-| `save_notifications` | `SettingsModal.ts` | Persists notification toggles |
-| `get_service_notification_settings` | `SettingsModal.ts` | Returns per-service poll/sound/overlay config |
-| `save_service_notification_settings` | `SettingsModal.ts` | Persists per-service settings, drives Jira poller interval |
+| Activity adapters/store | `Dashboard.ts`, `OverlayController.ts` | Populate `get_activity_feed`; command currently returns an empty list |
+| Jira poller/store | `Dashboard.ts` | Populate `get_jira_issues`; command currently returns an empty list |
+| Agent activity store | `Dashboard.ts` | Populate `get_agent_activity`; command currently returns an empty list |
+| Overlay variant state | `Dashboard.ts`, `Titlebar.ts` | Make `get_active_layout` and `open_view_mode` reflect/apply the chosen variant |
 
 ### 4B. Missing: `JiraPoller.rs`
 - `W_MicroserviceLLM.md` specifies a Tokio interval worker (`JiraPoller.rs`) in `src-tauri/src/`.
 - The file does not exist. No Jira polling loop, no delta JQL dispatching, no Tauri event emission to the frontend.
-- `save_service_notification_settings` is supposed to update the Jira poller interval dynamically — the integration is inert without this module.
+- The unified `save_settings` payload should update the Jira poller interval dynamically when the poller is added.
 
 ### 4C. Missing: Platform Activity Adapters
 - No Slack, Discord, or Teams event listeners or polling loops exist anywhere in the Rust backend.
@@ -135,20 +125,13 @@ The frontend invokes these commands in `Dashboard.ts` and `SettingsModal.ts`; th
 - LLM chat execution via `execute_chat` → Python microservice → Watsonx/OpenAI (requires `.venv` and configured keys).
 - Notification sound chime respecting `soundEnabled` and `globalMute`.
 - Proximity auto-hide and empty-stream auto-hide on overlay.
-- `get_app_settings`/`save_app_settings` persist correctly via `SecretStore`.
+- Unified `get_settings`/`save_settings` persist the profile, hotkeys, appearance, notification, overlay, and service settings blob via `SecretStore`.
 
 ### Silently Broken at Runtime (Always Fail to Empty/Default)
-- `get_connection_states` → connection dots always show disconnected.
-- `get_activity_feed` → HUD stream and Activity column always empty.
+- `get_activity_feed` → HUD stream and Activity column always empty until activity adapters exist.
 - `get_jira_issues` → Issues column always empty.
 - `get_agent_activity` → Agent column always empty.
-- `get_active_layout` → rail overlay label always shows `—`.
-- `get_profile` / `save_profile` → profile panel non-functional.
-- `get_hotkeys` / `save_hotkeys` → hotkey bindings not persisted across sessions.
-- `get_appearance` / `save_appearance` → appearance settings not persisted.
-- `get_notifications` / `save_notifications` → notification toggles not persisted.
-- `disconnect_service` → disconnect buttons do nothing.
-- `get_service_notification_settings` / `save_service_notification_settings` → per-service settings not persisted.
+- `open_view_mode` → validates the requested view but does not yet change the window variant.
 - Jira polling → `JiraPoller.rs` absent entirely.
 
 ---
@@ -157,25 +140,22 @@ The frontend invokes these commands in `Dashboard.ts` and `SettingsModal.ts`; th
 # 6. Priority Order for Next Work
 ================================================================================
 
-1. **Implement all missing Rust commands** (`Commands.rs` + register in `lib.rs`)
-   - Phase A: Persistence stubs — `get_profile`, `save_profile`, `get_hotkeys`, `save_hotkeys`, `get_appearance`, `save_appearance`, `get_notifications`, `save_notifications`, `get_service_notification_settings`, `save_service_notification_settings`. All backed by `SecretStore` key-value storage (serialize/deserialize JSON).
-   - Phase B: Connection state — `get_connection_states` (check relevant keyring tokens), `disconnect_service` (delete tokens by kind).
-   - Phase C: Feed/layout stubs — `get_activity_feed`, `get_jira_issues`, `get_agent_activity`, `get_active_layout` returning empty or default values initially so the UI renders without error.
-
-2. **Implement `JiraPoller.rs`**
+1. **Implement `JiraPoller.rs`**
    - Tokio interval task with `watch` channel for dynamic interval updates.
    - Delta JQL query dispatch to Jira REST API using the stored access token.
    - Tauri event emission so `get_jira_issues` has live data to return.
    - Wire `save_service_notification_settings` to update the poller interval.
 
-3. **Platform Activity Adapters (Slack, Discord)**
+2. **Platform Activity Adapters (Slack, Discord)**
    - In-memory `ActivityStore` shared state in `AppState`.
    - Polling or WebSocket adapters writing normalized `FeedItem` entries into the store.
    - `get_activity_feed` reads from the store.
 
-4. **Agent Activity Log**
+3. **Agent Activity Log**
    - Append `execute_chat` responses to an in-memory or persisted activity log.
    - `get_agent_activity` reads from that log.
+
+4. **Complete overlay variant dispatch** for `open_view_mode` and keep `get_active_layout` synchronized with tray/window state.
 
 5. **Onboarding Flow Validation**
    - Confirm `main.ts` onboarding check routes correctly.

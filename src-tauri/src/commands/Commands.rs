@@ -41,12 +41,24 @@ pub struct ChatResponsePayload {
     pub fallbackReason: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AppSettingsPayload {
-    pub autoHideWhenIdle: bool,
-    pub autoHideWhenEmpty: bool,
-    pub alwaysShowToolbar: bool,
-    pub soundEnabled: bool,
+fn default_settings() -> serde_json::Value {
+    serde_json::json!({
+        "profile": { "displayName": "", "organisation": "" },
+        "hotkeys": {
+            "Toggle overlay": "Alt+F1",
+            "Mute notifications": "Alt+M",
+            "Open connections": "Alt+C",
+            "Open settings": "Alt+,"
+        },
+        "appearance": { "theme": "system", "opacity": 100, "fontSize": "default", "accentColor": "#64b6ac", "hardwareAcceleration": true },
+        "notifications": { "globalMute": false, "mentions": true, "dms": true, "channelActivity": false, "issueUpdates": true, "agentResponses": true },
+        "overlay": { "autoHideWhenIdle": false, "autoHideWhenEmpty": false, "alwaysShowToolbar": false, "soundEnabled": true },
+        "services": {
+            "discord": { "intervalSeconds": 30, "playSound": true, "showOnOverlay": true, "mentions": true, "directMessages": true, "channelActivity": false, "issueUpdates": true, "assignments": true },
+            "slack": { "intervalSeconds": 30, "playSound": true, "showOnOverlay": true, "mentions": true, "directMessages": true, "channelActivity": false, "issueUpdates": true, "assignments": true },
+            "jira": { "intervalSeconds": 30, "playSound": true, "showOnOverlay": true, "mentions": true, "directMessages": true, "channelActivity": false, "issueUpdates": true, "assignments": true }
+        }
+    })
 }
 
 // ==============================================================================
@@ -67,6 +79,89 @@ pub async fn check_connections(state: State<'_, AppState>) -> Result<bool, Strin
         || teamsToken.is_some()
         || jiraToken.is_some()
         || apiKey.is_some())
+}
+
+#[tauri::command]
+pub async fn get_connection_states(state: State<'_, AppState>) -> Result<serde_json::Value, String> {
+    let mut states = serde_json::Map::new();
+    for (kind, key) in [
+        ("slack", "slack_access_token"),
+        ("discord", "discord_access_token"),
+        ("microsoft-teams", "teams_access_token"),
+        ("jira", "jira_access_token"),
+        ("api-token", "api_key"),
+    ] {
+        states.insert(kind.to_string(), serde_json::Value::Bool(state.secretStore.getSecret(key)?.is_some()));
+    }
+    Ok(serde_json::Value::Object(states))
+}
+
+#[tauri::command]
+pub async fn disconnect_service(kind: String, state: State<'_, AppState>) -> Result<(), String> {
+    let keys: &[&str] = match kind.as_str() {
+        "slack" => &["slack_access_token", "slack_refresh_token"],
+        "discord" => &["discord_access_token", "discord_refresh_token"],
+        "microsoft-teams" => &["teams_access_token", "teams_refresh_token"],
+        "jira" => &["jira_access_token", "jira_refresh_token"],
+        "api-token" => &["api_key", "openai_gateway_key", "watsonx_cloud_key"],
+        _ => return Err(format!("Unsupported connection kind: {}", kind)),
+    };
+    for key in keys { state.secretStore.deleteSecret(key)?; }
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn get_settings(state: State<'_, AppState>) -> Result<serde_json::Value, String> {
+    let Some(stored) = state.secretStore.getSecret("app_settings")? else {
+        let mut settings = default_settings();
+        let overlay = settings.get_mut("overlay").and_then(serde_json::Value::as_object_mut).ok_or("Default settings are malformed")?;
+        for (field, key) in [
+            ("autoHideWhenIdle", "setting_auto_hide_idle"),
+            ("autoHideWhenEmpty", "setting_auto_hide_empty"),
+            ("alwaysShowToolbar", "setting_always_show_toolbar"),
+            ("soundEnabled", "setting_sound_enabled"),
+        ] {
+            if let Some(value) = state.secretStore.getSecret(key)? {
+                overlay.insert(field.to_string(), serde_json::Value::Bool(value == "true"));
+            }
+        }
+        return Ok(settings);
+    };
+    let mut settings: serde_json::Value = serde_json::from_str(&stored).map_err(|e| format!("Stored settings are invalid: {}", e))?;
+    let defaults = default_settings();
+    if let (Some(settings), Some(defaults)) = (settings.as_object_mut(), defaults.as_object()) {
+        for (key, value) in defaults {
+            settings.entry(key.clone()).or_insert_with(|| value.clone());
+        }
+    }
+    Ok(settings)
+}
+
+#[tauri::command]
+pub async fn save_settings(settings: serde_json::Value, state: State<'_, AppState>) -> Result<(), String> {
+    if !settings.is_object() { return Err("Settings payload must be an object".to_string()); }
+    let encoded = serde_json::to_string(&settings).map_err(|e| format!("Failed to serialize settings: {}", e))?;
+    state.secretStore.setSecret("app_settings", &encoded)
+}
+
+#[tauri::command]
+pub async fn get_activity_feed() -> Result<Vec<serde_json::Value>, String> { Ok(Vec::new()) }
+
+#[tauri::command]
+pub async fn get_jira_issues() -> Result<Vec<serde_json::Value>, String> { Ok(Vec::new()) }
+
+#[tauri::command]
+pub async fn get_agent_activity() -> Result<Vec<serde_json::Value>, String> { Ok(Vec::new()) }
+
+#[tauri::command]
+pub async fn get_active_layout(state: State<'_, AppState>) -> Result<String, String> {
+    Ok(if state.trayState.overlayMode.load(Ordering::SeqCst) { "Floating HUD" } else { "—" }.to_string())
+}
+
+#[tauri::command]
+pub async fn open_view_mode(mode: String) -> Result<(), String> {
+    if matches!(mode.as_str(), "Floating HUD" | "Mini-Pill" | "Docked Sidebar") { Ok(()) }
+    else { Err(format!("Unsupported view mode: {}", mode)) }
 }
 
 // Handles connection initiation flow for a given connection kind from UI
@@ -485,41 +580,3 @@ pub async fn open_help_section(target: String) -> Result<(), String> {
     Ok(())
 }
 
-// Retrieves customizable application and overlay settings
-#[tauri::command]
-pub async fn get_app_settings(
-    state: State<'_, AppState>,
-) -> Result<AppSettingsPayload, String> {
-    let autoHideWhenIdle = state.secretStore.getSecret("setting_auto_hide_idle")?
-        .map(|v| v == "true")
-        .unwrap_or(false);
-    let autoHideWhenEmpty = state.secretStore.getSecret("setting_auto_hide_empty")?
-        .map(|v| v == "true")
-        .unwrap_or(false);
-    let alwaysShowToolbar = state.secretStore.getSecret("setting_always_show_toolbar")?
-        .map(|v| v == "true")
-        .unwrap_or(false);
-    let soundEnabled = state.secretStore.getSecret("setting_sound_enabled")?
-        .map(|v| v == "true")
-        .unwrap_or(true);
-
-    Ok(AppSettingsPayload {
-        autoHideWhenIdle,
-        autoHideWhenEmpty,
-        alwaysShowToolbar,
-        soundEnabled,
-    })
-}
-
-// Saves customizable application and overlay settings
-#[tauri::command]
-pub async fn save_app_settings(
-    settings: AppSettingsPayload,
-    state: State<'_, AppState>,
-) -> Result<(), String> {
-    state.secretStore.setSecret("setting_auto_hide_idle", &settings.autoHideWhenIdle.to_string())?;
-    state.secretStore.setSecret("setting_auto_hide_empty", &settings.autoHideWhenEmpty.to_string())?;
-    state.secretStore.setSecret("setting_always_show_toolbar", &settings.alwaysShowToolbar.to_string())?;
-    state.secretStore.setSecret("setting_sound_enabled", &settings.soundEnabled.to_string())?;
-    Ok(())
-}

@@ -2,6 +2,7 @@
 // Imports
 // ==============================================================================
 import { invoke } from "@tauri-apps/api/core";
+import { loadSettings, updateSettings, defaultServiceSettings } from "../api/Settings";
 import { requireElement } from "../utils/Dom";
 import { CONNECTION_ROWS } from "../data/Connections";
 import { buildToggleRow } from "../ui/Toggle";
@@ -27,31 +28,11 @@ type ConnectionMap = Record<string, boolean>;
 type HotkeyMap     = Record<string, string>;
 
 interface AppearanceConfig {
-  theme:       "system" | "dark" | "light";
-  opacity:     number;
-  fontSize:    "small" | "default" | "large";
-  accentColor: string;
-}
-
-interface AppSettingsPayload {
-  autoHideWhenIdle:  boolean;
-  autoHideWhenEmpty: boolean;
-  alwaysShowToolbar: boolean;
-  soundEnabled:      boolean;
-}
-
-interface NotificationConfig {
-  globalMute:      boolean;
-  mentions:        boolean;
-  dms:             boolean;
-  channelActivity: boolean;
-  issueUpdates:    boolean;
-  agentResponses:  boolean;
-}
-
-interface ProfileConfig {
-  displayName:  string;
-  organisation: string;
+  theme:                "system" | "dark" | "light";
+  opacity:              number;
+  fontSize:             "small" | "default" | "large";
+  accentColor:          string;
+  hardwareAcceleration: boolean;
 }
 
 interface ServiceNotificationConfig {
@@ -78,17 +59,6 @@ const DEFAULT_HOTKEYS: HotkeyMap = {
 const SWATCH_COUNT = 6;
 
 const SERVICE_POLL_OPTIONS = [15, 30, 60, 120];
-
-const DEFAULT_SERVICE_NOTIFICATION_CONFIG: ServiceNotificationConfig = {
-  intervalSeconds: 30,
-  playSound: true,
-  showOnOverlay: true,
-  mentions: true,
-  directMessages: true,
-  channelActivity: false,
-  issueUpdates: true,
-  assignments: true,
-};
 
 // ==============================================================================
 // Functions
@@ -243,6 +213,9 @@ function buildAppearancePanel(): string {
     ${buildToggleRow("sm-overlay-toolbar", "Always show toolbar", "Keep titlebar visible in overlay mode", false)}
     ${buildToggleRow("sm-overlay-autohide-idle", "Auto-hide when idle", "Dim or hide overlay when cursor is away", false)}
     ${buildToggleRow("sm-overlay-autohide-empty", "Auto-hide when empty", "Collapse overlay when no notifications are pending", false)}
+    <div class="settings-modal__divider"></div>
+    <div class="settings-modal__panel-subheading">Performance</div>
+    ${buildToggleRow("sm-hardware-acceleration", "Hardware acceleration", "Use GPU rendering for smoother performance and animations", true)}
     <button class="settings-modal__save-btn btn btn--primary btn--lg" id="sm-appearance-save">Save</button>
   `;
 }
@@ -320,7 +293,7 @@ function switchTab(modal: HTMLElement, tab: SettingsTab): void {
 
 async function loadPanelData(modal: HTMLElement, tab: SettingsTab): Promise<void> {
   if (tab === "profile") {
-    const data = await invoke<ProfileConfig>("get_profile").catch(() => ({
+    const data = await loadSettings().then(settings => settings.profile).catch(() => ({
       displayName: "", organisation: "",
     }));
     const nameInput = requireElement<HTMLInputElement>(modal, "#sm-display-name");
@@ -332,13 +305,10 @@ async function loadPanelData(modal: HTMLElement, tab: SettingsTab): Promise<void
   }
 
   if (tab === "connections") {
-    const [states, discoveredApps, serviceConfigs] = await Promise.all([
+    const [states, discoveredApps, loadedSettings] = await Promise.all([
       invoke<ConnectionMap>("get_connection_states").catch(() => ({} as ConnectionMap)),
       loadDiscoveredApps(),
-      Promise.all(["discord", "slack", "jira"].map(kind =>
-        invoke<ServiceNotificationConfig>("get_service_notification_settings", { kind })
-          .catch(() => ({ ...DEFAULT_SERVICE_NOTIFICATION_CONFIG }))
-      )),
+      loadSettings().catch(() => ({ services: {} } as Awaited<ReturnType<typeof loadSettings>>)),
     ]);
 
     const rowsContainer = requireElement<HTMLElement>(modal, "#sm-conn-rows");
@@ -346,9 +316,9 @@ async function loadPanelData(modal: HTMLElement, tab: SettingsTab): Promise<void
       buildConnectionRow(r, !!states[r.kind], discoveredApps)
     ).join("");
     wireAppIconDropdowns(modal);
-    ["discord", "slack", "jira"].forEach((kind, index) => {
+    ["discord", "slack", "jira"].forEach(kind => {
       const settings = requireElement<HTMLElement>(rowsContainer, `[data-service-settings="${kind}"]`);
-      applyServiceNotificationConfig(settings, serviceConfigs[index]);
+      applyServiceNotificationConfig(settings, loadedSettings.services[kind] ?? defaultServiceSettings());
     });
 
     wireConnectionButtons(modal);
@@ -365,7 +335,7 @@ async function loadPanelData(modal: HTMLElement, tab: SettingsTab): Promise<void
   }
 
   if (tab === "hotkeys") {
-    const bindings = await invoke<HotkeyMap>("get_hotkeys").catch(() => ({ ...DEFAULT_HOTKEYS }));
+    const bindings = await loadSettings().then(settings => settings.hotkeys).catch(() => ({ ...DEFAULT_HOTKEYS }));
     modal.querySelectorAll<HTMLElement>(".settings-modal__hotkey-row").forEach(row => {
       const action  = row.dataset["action"] ?? "";
       const binding = bindings[action] ?? DEFAULT_HOTKEYS[action] ?? "";
@@ -376,7 +346,7 @@ async function loadPanelData(modal: HTMLElement, tab: SettingsTab): Promise<void
   }
 
   if (tab === "appearance") {
-    const cfg = await invoke<AppearanceConfig>("get_appearance").catch(() => ({
+    const cfg = await loadSettings().then(settings => settings.appearance).catch(() => ({
       theme: "system" as const, opacity: 100, fontSize: "default" as const, accentColor: "#64b6ac",
     }));
 
@@ -397,11 +367,7 @@ async function loadPanelData(modal: HTMLElement, tab: SettingsTab): Promise<void
     const hexInput = requireElement<HTMLInputElement>(modal, "#sm-accent-hex");
     hexInput.value = cfg.accentColor;
 
-    const appSettings = await invoke<{
-      autoHideWhenIdle: boolean;
-      autoHideWhenEmpty: boolean;
-      alwaysShowToolbar: boolean;
-    }>("get_app_settings").catch(() => ({
+    const appSettings = await loadSettings().then(settings => settings.overlay).catch(() => ({
       autoHideWhenIdle: false,
       autoHideWhenEmpty: false,
       alwaysShowToolbar: false,
@@ -415,10 +381,13 @@ async function loadPanelData(modal: HTMLElement, tab: SettingsTab): Promise<void
 
     const emptyInput = modal.querySelector<HTMLInputElement>("#sm-overlay-autohide-empty");
     if (emptyInput) emptyInput.checked = appSettings.autoHideWhenEmpty;
+
+    const hwInput = modal.querySelector<HTMLInputElement>("#sm-hardware-acceleration");
+    if (hwInput) hwInput.checked = cfg.hardwareAcceleration ?? true;
   }
 
   if (tab === "notifications") {
-    const cfg = await invoke<NotificationConfig>("get_notifications").catch(() => ({
+    const cfg = await loadSettings().then(settings => settings.notifications).catch(() => ({
       globalMute: false, mentions: true, dms: true,
       channelActivity: false, issueUpdates: true, agentResponses: true,
     }));
@@ -432,7 +401,7 @@ async function loadPanelData(modal: HTMLElement, tab: SettingsTab): Promise<void
       if (el) el.checked = checked;
     });
 
-    const appSettings = await invoke<{ soundEnabled: boolean }>("get_app_settings").catch(() => ({ soundEnabled: true }));
+    const appSettings = await loadSettings().then(settings => settings.overlay).catch(() => ({ soundEnabled: true }));
     const soundInput = modal.querySelector<HTMLInputElement>("#sm-notif-sound");
     if (soundInput) soundInput.checked = appSettings.soundEnabled;
 
@@ -501,10 +470,7 @@ function wireServiceSettings(modal: HTMLElement): void {
     button.addEventListener("click", () => {
       const kind = button.dataset["serviceSave"] ?? "";
       const settings = requireElement<HTMLElement>(modal, `[data-service-settings="${kind}"]`);
-      invoke("save_service_notification_settings", {
-        kind,
-        settings: readServiceNotificationConfig(settings),
-      }).catch(() => {});
+      updateSettings({ services: { [kind]: readServiceNotificationConfig(settings) } }).catch(() => {});
     });
   });
 }
@@ -581,7 +547,7 @@ function wireSaveButtons(modal: HTMLElement): void {
   requireElement<HTMLButtonElement>(modal, "#sm-profile-save").addEventListener("click", () => {
     const displayName  = requireElement<HTMLInputElement>(modal, "#sm-display-name").value;
     const organisation = requireElement<HTMLInputElement>(modal, "#sm-organisation").value;
-    invoke("save_profile", { displayName, organisation }).catch(() => {});
+    updateSettings({ profile: { displayName, organisation } }).catch(() => {});
     const initials = requireElement<HTMLElement>(modal, "#sm-avatar-initials");
     initials.textContent = displayName.slice(0, 2).toUpperCase() || "?";
   });
@@ -593,7 +559,7 @@ function wireSaveButtons(modal: HTMLElement): void {
       const binding = requireElement<HTMLElement>(row, ".settings-modal__hotkey-key").dataset["binding"] ?? "";
       bindings[action] = binding;
     });
-    invoke("save_hotkeys", { bindings }).catch(() => {});
+    updateSettings({ hotkeys: bindings }).catch(() => {});
   });
 
   requireElement<HTMLButtonElement>(modal, "#sm-appearance-save").addEventListener("click", () => {
@@ -603,46 +569,27 @@ function wireSaveButtons(modal: HTMLElement): void {
     const fontSize   = requireElement<HTMLButtonElement>(modal, "#sm-font-size .settings-modal__radio-pill--active")
       .dataset["value"] as AppearanceConfig["fontSize"];
     const accentColor = requireElement<HTMLInputElement>(modal, "#sm-accent-hex").value;
+    const hardwareAcceleration = modal.querySelector<HTMLInputElement>("#sm-hardware-acceleration")?.checked ?? true;
     document.documentElement.dataset["theme"] = theme;
-    invoke("save_appearance", { theme, opacity, fontSize, accentColor }).catch(() => {});
+    document.documentElement.dataset["hardwareAcceleration"] = String(hardwareAcceleration);
+    updateSettings({ appearance: { theme, opacity, fontSize, accentColor, hardwareAcceleration } }).catch(() => {});
 
     const alwaysShowToolbar = modal.querySelector<HTMLInputElement>("#sm-overlay-toolbar")?.checked ?? false;
     const autoHideWhenIdle = modal.querySelector<HTMLInputElement>("#sm-overlay-autohide-idle")?.checked ?? false;
     const autoHideWhenEmpty = modal.querySelector<HTMLInputElement>("#sm-overlay-autohide-empty")?.checked ?? false;
-    invoke<AppSettingsPayload>("get_app_settings")
-      .then(curr => {
-        invoke("save_app_settings", {
-          settings: {
-            ...curr,
-            alwaysShowToolbar,
-            autoHideWhenIdle,
-            autoHideWhenEmpty,
-          },
-        }).catch(() => {});
-      })
-      .catch(() => {});
+    updateSettings({ overlay: { alwaysShowToolbar, autoHideWhenIdle, autoHideWhenEmpty } }).catch(() => {});
   });
 
   requireElement<HTMLButtonElement>(modal, "#sm-notifications-save").addEventListener("click", () => {
     const get = (id: string): boolean =>
       requireElement<HTMLInputElement>(modal, `#${id}`).checked;
-    invoke("save_notifications", {
+    const notifications = {
       globalMute: get("sm-notif-mute"), mentions: get("sm-notif-mentions"),
       dms: get("sm-notif-dms"), channelActivity: get("sm-notif-channel"),
       issueUpdates: get("sm-notif-issues"), agentResponses: get("sm-notif-agent"),
-    }).catch(() => {});
-
+    };
     const soundEnabled = modal.querySelector<HTMLInputElement>("#sm-notif-sound")?.checked ?? true;
-    invoke<AppSettingsPayload>("get_app_settings")
-      .then(curr => {
-        invoke("save_app_settings", {
-          settings: {
-            ...curr,
-            soundEnabled,
-          },
-        }).catch(() => {});
-      })
-      .catch(() => {});
+    updateSettings({ notifications, overlay: { soundEnabled } }).catch(() => {});
   });
 
 }

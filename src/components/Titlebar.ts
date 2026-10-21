@@ -5,6 +5,7 @@ import { listen }           from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke }           from "@tauri-apps/api/core";
 import { requireElement }   from "../utils/Dom";
+import { loadSettings } from "../api/Settings";
 
 import { openSettingsModal } from "./SettingsModal";
 import { mountOnboarding }   from "./Onboarding";
@@ -166,7 +167,7 @@ function wireMenuBar(container: HTMLElement): void {
         } else if (menuLabel === "View") {
           invoke("open_view_mode", { mode: itemLabel }).catch(() => {});
         } else if (menuLabel === "Help") {
-          invoke("open_help_section", { section: itemLabel }).catch(() => {});
+          invoke("open_help_section", { target: itemLabel }).catch(() => {});
         }
 
         menus.forEach(m => m.classList.remove("titlebar__menu--open"));
@@ -209,8 +210,8 @@ function wireWindowControls(container: HTMLElement): void {
 // Mount
 // ==============================================================================
 export function mountTitlebar(container: HTMLElement): void {
-  invoke<{ theme: "system" | "dark" | "light" }>("get_appearance")
-    .then(config => { document.documentElement.dataset["theme"] = config.theme; })
+  loadSettings()
+    .then(settings => { document.documentElement.dataset["theme"] = settings.appearance.theme; })
     .catch(() => {});
   container.innerHTML = `
     <div class="titlebar">

@@ -2,6 +2,7 @@
 // Imports
 // ==============================================================================
 import { invoke }          from "@tauri-apps/api/core";
+import { loadSettings } from "../api/Settings";
 import { formatTimestamp } from "../utils/Format";
 
 import fixtureIcon  from "../assets/icons/Fixture.svg?raw";
@@ -136,13 +137,6 @@ function wirePillActions(container: HTMLElement): void {
   });
 }
 
-interface AppSettings {
-  autoHideWhenIdle: boolean;
-  autoHideWhenEmpty: boolean;
-  alwaysShowToolbar: boolean;
-  soundEnabled: boolean;
-}
-
 let idleTimer: number | null = null;
 
 function setupProximityAutoHide(cardElement: HTMLElement, autoHideWhenIdle: boolean): void {
@@ -191,12 +185,8 @@ export async function mountOverlay(
 ): Promise<void> {
   await invoke("start_overlay", { variant }).catch(() => {});
 
-  const settings = await invoke<AppSettings>("get_app_settings").catch(() => ({
-    autoHideWhenIdle: false,
-    autoHideWhenEmpty: false,
-    alwaysShowToolbar: false,
-    soundEnabled: true,
-  }));
+  const loadedSettings = await loadSettings().catch(() => null);
+  const settings = loadedSettings?.overlay ?? { autoHideWhenIdle: false, autoHideWhenEmpty: false, alwaysShowToolbar: false, soundEnabled: true };
 
   const titlebar = document.getElementById("titlebar");
   if (titlebar) {

@@ -6,6 +6,26 @@ All architectural and implementation decisions are recorded here in reverse-chro
 
 ## 2026-10-19
 
+### Hardware Acceleration Settings and Cross-Platform Background Throttling
+
+Added cross-platform hardware acceleration toggle in SettingsModal Appearance tab wired to unified settings IPC, removed duplicate SVG selector in Globals.css, and configured background throttling prevention across macOS (`backgroundThrottling: disabled`) and Windows (`--disable-background-timer-throttling`, `--disable-backgrounding-occluded-windows`, `--disable-renderer-backgrounding`). — Antigravity (2026-10-19T18:55:00Z)
+
+### Unified Settings IPC and Default Dashboard Commands
+
+Migrated settings reads and saves to a single persisted `get_settings` / `save_settings` payload, registered connection, feed, issue, agent, layout, and view-mode commands with safe defaults, and updated the project status plan to distinguish command stubs from missing data sources. — Codex (2026-10-19)
+
+### Cross-Platform Dynamic App Discovery Plan
+
+Added `planning/W_CrossPlatformAppDiscovery.md` to replace hardcoded and placeholder app discovery with Windows, macOS, and Linux registration-based enumeration, and to identify redundant discovery helpers for removal from `QuickLauncher.rs`. — Codex (2026-10-19)
+
+### CSS Root Rule Consolidation
+
+Consolidated fragmented `html` and `html, body` rule blocks in `Globals.css` into a single unified root selector with `text-rendering` and `overscroll-behavior`. — Antigravity (2026-10-19T16:05:00Z)
+
+### WebView Rendering Configuration and macOS Fullscreen Capability
+
+Added WebView engine flags (`additionalBrowserArgs` for sRGB, GPU rasterization, overlay scrollbars), dark-mode `backgroundColor` (`#0d1317`) to eliminate window flashes, `zoomHotkeysEnabled: false`, `scrollBarStyle: "fluentOverlay"`, CSS `overscroll-behavior: none`, `image-rendering: -webkit-optimize-contrast`, and enabled macOS fullscreen capability via `maximizable: true` and `macOSPrivateApi: true`. — Antigravity (2026-10-19T15:37:00Z)
+
 ### IPC Command Consolidation — Settings
 
 Reduced the 10 fragmented settings commands (`get_profile`, `save_profile`, `get_hotkeys`, `save_hotkeys`, `get_appearance`, `save_appearance`, `get_notifications`, `save_notifications`, `get_service_notification_settings`, `save_service_notification_settings`) plus the existing `get_app_settings` / `save_app_settings` pair down to two commands: `get_settings` and `save_settings`. The unified blob carries all settings sections — profile, hotkeys, appearance, notifications, overlay behavior, and per-service notification configs — as a single JSON object. — Bob (2026-10-19T17:16:42Z)

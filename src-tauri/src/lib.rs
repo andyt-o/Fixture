@@ -18,7 +18,9 @@ use crate::commands::Commands::{
     execute_chat, get_available_models, get_installed_context_apps, get_oauth_url,
     launch_app_context, minimize_to_tray, open_connection_flow, open_help_section,
     retrieve_secret, save_llm_secret, set_llm_provider_priority, start_overlay, stop_overlay, store_secret,
-    toggle_overlay_mode, choose_application_file, set_selected_app, get_app_settings, save_app_settings, AppState,
+    toggle_overlay_mode, choose_application_file, set_selected_app, AppState,
+    get_settings, save_settings, get_connection_states, disconnect_service, get_activity_feed,
+    get_jira_issues, get_agent_activity, get_active_layout, open_view_mode,
 };
 use crate::storage::SecretStore::SecretStore;
 use crate::tray::TrayManager::{setupSystemTray, TrayState};
@@ -81,8 +83,15 @@ pub fn run() {
             stop_overlay,
             toggle_overlay_mode,
             minimize_to_tray,
-            get_app_settings,
-            save_app_settings,
+            get_settings,
+            save_settings,
+            get_connection_states,
+            disconnect_service,
+            get_activity_feed,
+            get_jira_issues,
+            get_agent_activity,
+            get_active_layout,
+            open_view_mode,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

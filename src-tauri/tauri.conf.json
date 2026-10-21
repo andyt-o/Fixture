@@ -10,6 +10,7 @@
     "beforeBuildCommand": "npm run build"
   },
   "app": {
+    "macOSPrivateApi": true,
     "windows": [
       {
         "label": "main",
@@ -18,10 +19,16 @@
         "height": 800,
         "maximized": true,
         "resizable": true,
+        "maximizable": true,
         "fullscreen": false,
         "decorations": false,
         "transparent": false,
-        "alwaysOnTop": false
+        "alwaysOnTop": false,
+        "backgroundColor": "#0d1317",
+        "zoomHotkeysEnabled": false,
+        "backgroundThrottling": "disabled",
+        "scrollBarStyle": "fluentOverlay",
+        "additionalBrowserArgs": "--force-color-profile=srgb --enable-features=OverlayScrollbar --enable-gpu-rasterization --disable-features=msWebOOUI,msPdfOOUI --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-renderer-backgrounding"
       }
     ],
     "security": {
